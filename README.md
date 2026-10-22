@@ -1,5 +1,11 @@
 # Tetris ESP32 — Pocket Arcade
 
+## Hospedagem na Vercel
+
+O arquivo `vercel.json` configura o site estático sem instalação de dependências nem compilação, publicando a pasta `dist` na raiz do domínio.
+
+Para publicar pela interface da Vercel, importe `CaioOlliveira/game_tetris`, mantenha a raiz do projeto em `./` e clique em Deploy. A configuração de saída já está no repositório. Alternativamente, com a CLI autenticada, execute `vercel --prod` na raiz do projeto. A hospedagem HTTPS permite usar Web Bluetooth em navegadores compatíveis.
+
 ## Abrir e jogar
 
 Abra `dist/index.html` diretamente no Chrome ou em outro navegador moderno. Não exige servidor, instalação, ESP32 ou internet. Clique em **INICIAR JOGO** no display. Os arquivos `index.html`, `style.css` e `script.js` ficam juntos em `dist/`, prontos para copiar para o celular ou hospedar. A interface utiliza fontes locais e não faz requisições externas.
