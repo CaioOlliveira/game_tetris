@@ -34,13 +34,15 @@ O Canvas tem resolução interna **240 × 320**, ampliada por CSS em proporção
 - `dist/index.html`: interface, menu e controles acessíveis.
 - `dist/style.css`: aparência e layout responsivo.
 - `dist/script.js`: `TetrisEngine` (regras), `TFTRenderer` (Canvas), `RetroAudio` (Web Audio), `ESP32BLE` (transporte), e integração de entrada/loop.
+- `firmware/tetris_esp32/tetris_esp32.ino`: jogo, botões, buzzer e servidor BLE para o ESP32.
+- `firmware/README.md`: montagem e gravação do ESP32.
 - `tests/engine.test.cjs`: testes executáveis com `node --test tests/engine.test.cjs`.
 
 O loop usa requestAnimationFrame e delta de tempo, limitado a 100 ms para evitar saltos ao retomar uma aba. A lógica local fica suspensa durante a conexão BLE. Controles remotos enviam comandos; somente estados recebidos do firmware atualizam o jogo remoto. Ao desconectar, o menu local reaparece para iniciar uma nova partida independente.
 
-## Futuro firmware ESP32 / contrato BLE proposto v1
+## Firmware ESP32 / contrato BLE v1
 
-**Não foi fornecido nem implementado firmware. Os UUIDs abaixo são definidos para este projeto e não correspondem a um firmware existente. O firmware deverá implementar os mesmos valores e protocolo.** Não se afirma compatibilidade com dispositivos atuais.
+O firmware está em [`firmware/tetris_esp32/tetris_esp32.ino`](firmware/tetris_esp32/tetris_esp32.ino). Consulte [`firmware/README.md`](firmware/README.md) para instalar e gravar. Os UUIDs abaixo são específicos deste projeto.
 
 | Item | UUID |
 |---|---|
@@ -48,7 +50,7 @@ O loop usa requestAnimationFrame e delta de tempo, limitado a 100 ms para evitar
 | Estado (notify) | `702a0002-3a5a-4b2e-9f4c-18c8e6503200` |
 | Comandos (write with response) | `702a0003-3a5a-4b2e-9f4c-18c8e6503200` |
 
-Web Bluetooth exige navegador/plataforma compatível e origem segura (HTTPS ou localhost). Use Chrome Android ou Chrome desktop com suporte Bluetooth do sistema. A abertura via arquivo local serve ao jogo offline; para BLE utilize HTTPS/localhost. iOS e navegadores sem Web Bluetooth continuam podendo jogar offline.
+O ESP32 anuncia o serviço BLE; o navegador no celular, notebook ou PC inicia a conexão ao clicar em **CONECTAR ESP32**. Não é preciso parear antes nas configurações Bluetooth do sistema. Web Bluetooth exige navegador/plataforma compatível e origem segura (HTTPS ou localhost). Use Chrome Android ou Chrome desktop com suporte Bluetooth do sistema. A abertura via arquivo local serve ao jogo offline; para BLE utilize HTTPS/localhost. iOS e navegadores sem Web Bluetooth continuam podendo jogar offline.
 
 O ESP32 deve anunciar o UUID de serviço. **CONECTAR ESP32** abre o seletor nativo; após a conexão o site assina notificações e envia `sync`. Cada mensagem é JSON UTF-8 encerrada por LF (`\n`). O firmware deve fragmentar as mensagens de estado conforme o MTU negociado. O navegador junta os fragmentos, aceita mensagens completas e valida dimensões, IDs e limites antes de renderizar. Tamanho máximo do buffer: 16 KiB.
 
@@ -67,4 +69,4 @@ IDs: 0 vazio, 1 I, 2 O, 3 T, 4 S, 5 Z, 6 J, 7 L. `board` contém apenas blocos f
 
 Comandos do site: `{"v":1,"action":"left"}\n`. Ações: `left`, `right`, `rotate`, `down`, `drop`, `pause` (alternar), `restart` e `sync`. As escritas são serializadas para evitar operações GATT simultâneas. Cada comando é um evento discreto; o site repete eventos de movimento ao segurar botões. GPIO 25 (esquerda), 26 (girar), 27 (direita) devem ser lidos e tratados com debounce pelo firmware. GPIO 33 controla o buzzer passivo; os efeitos Web Audio servem como referência, não enviam áudio ao buzzer.
 
-O firmware deve manter toda a lógica oficial, pontuação, gravidade, botões físicos e buzzer. O navegador funciona como display remoto e controle auxiliar. A lógica de estado foi validada por testes locais; conexão BLE real depende de hardware e firmware compatíveis e deve ser validada na bancada.
+O firmware mantém a lógica oficial, pontuação, gravidade, botões físicos e buzzer. O navegador mostra o estado remoto e oferece controles auxiliares. Com MTU BLE pequeno, o firmware fragmenta o JSON e agrupa atualizações rápidas para manter o estado mais recente. A ligação real com o hardware ainda precisa de teste na bancada.
