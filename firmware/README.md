@@ -21,6 +21,10 @@ Os botões usam `INPUT_PULLUP`: ficam em nível alto quando soltos e são aciona
 4. Clique em **Upload**. Abra o Monitor Serial em **115200 baud**. O aviso `Tetris ESP32 advertising BLE service` indica que o serviço está anunciado.
 5. Ative o Bluetooth do computador ou celular. Em um navegador com Web Bluetooth, abra `https://gametetris-coral.vercel.app/`, clique em **CONECTAR ESP32** e escolha **Tetris ESP32**. A conexão parte do navegador; não faça pareamento manual nas configurações do sistema.
 
+### Se a porta do ESP32 não aparecer no Windows
+
+Abra o **Gerenciador de Dispositivos**. Se aparecer **CP2102 USB to UART Bridge Controller** com erro **28**, falta o driver da porta serial. Baixe o **CP210x Universal Windows Driver** na [página oficial da Silicon Labs](https://www.silabs.com/software-and-tools/usb-to-uart-bridge-vcp-drivers), extraia o ZIP e instale `silabser.inf` com uma conta de administrador. No Windows 11, talvez seja necessário usar **Mostrar mais opções** para ver **Instalar**; também é possível escolher **Atualizar driver** no Gerenciador de Dispositivos e apontar para a pasta extraída. Depois, desconecte e reconecte a placa e selecione a nova porta **COM** em **Ferramentas > Porta** na Arduino IDE. A **COM1** interna do PC não é a porta do ESP32.
+
 Para compilar por linha de comando, com Arduino CLI, plataforma e biblioteca instaladas:
 
 ```sh
