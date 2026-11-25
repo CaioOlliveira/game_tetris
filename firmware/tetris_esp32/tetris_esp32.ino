@@ -7,9 +7,14 @@
 
 // ESP32 DevKit / WROOM-32. Buttons connect each GPIO to GND.
 constexpr uint8_t PIN_LEFT = 25;
-constexpr uint8_t PIN_ROTATE = 26;
+constexpr uint8_t PIN_ROTATE = 15;
 constexpr uint8_t PIN_RIGHT = 27;
+constexpr uint8_t PIN_DOWN = 21;
 constexpr uint8_t PIN_BUZZER = 33; // Passive buzzer, via a suitable driver if needed.
+
+constexpr uint8_t BUTTON_LED_PINS[] = {13, 14, 16, 17}; // Left, right, rotate, down.
+constexpr uint8_t PIN_BT_RED = 18;
+constexpr uint8_t PIN_BT_GREEN = 19;
 
 constexpr char SERVICE_UUID[] = "702a0001-3a5a-4b2e-9f4c-18c8e6503200";
 constexpr char STATE_UUID[] = "702a0002-3a5a-4b2e-9f4c-18c8e6503200";
@@ -21,8 +26,8 @@ constexpr uint16_t LOCK_DELAY_MS = 500;
 constexpr uint8_t MAX_LOCK_RESETS = 15;
 constexpr uint16_t MIN_NOTIFY_INTERVAL_MS = 90;
 
-enum Action : uint8_t { SYNC, LEFT, RIGHT, ROTATE, DOWN, DROP, PAUSE, RESTART, CONNECT, DISCONNECT, SUBSCRIBE };
-enum GameStatus : uint8_t { PLAYING, PAUSED, OVER };
+enum Action : uint8_t { SYNC, LEFT, RIGHT, ROTATE, DOWN, DROP, PAUSE, RESTART, SHOW_HELP, CONNECT, DISCONNECT, SUBSCRIBE };
+enum GameStatus : uint8_t { PLAYING, PAUSED, OVER, MENU, HELP };
 enum Sound : uint8_t { SILENT, START_SOUND, MOVE_SOUND, ROTATE_SOUND, LOCK_SOUND, CLEAR_SOUND, OVER_SOUND };
 
 struct Event { Action action; uint16_t handle; bool enabled; };
@@ -81,8 +86,15 @@ public:
   uint32_t score = 0;
   uint32_t lines = 0;
   uint32_t level = 1;
-  GameStatus status = PLAYING;
+  GameStatus status = MENU;
+  uint8_t menuSelection = 0;
   Sound sound = SILENT;
+
+  void openMenu() {
+    status = MENU;
+    menuSelection = 0;
+    sound = SILENT;
+  }
 
   void start() {
     memset(board, 0, sizeof(board));
@@ -257,7 +269,7 @@ struct Button {
   uint32_t changedAt = 0;
   uint32_t nextRepeat = 0;
 };
-Button buttons[] = {{PIN_LEFT, LEFT}, {PIN_ROTATE, ROTATE}, {PIN_RIGHT, RIGHT}};
+Button buttons[] = {{PIN_LEFT, LEFT}, {PIN_ROTATE, ROTATE}, {PIN_RIGHT, RIGHT}, {PIN_DOWN, DOWN}};
 
 class ServerCallbacks : public NimBLEServerCallbacks {
   void onConnect(NimBLEServer* server, NimBLEConnInfo& info) override {
@@ -292,7 +304,8 @@ class CommandCallbacks : public NimBLECharacteristicCallbacks {
       {"{\"v\":1,\"action\":\"down\"}", DOWN},
       {"{\"v\":1,\"action\":\"drop\"}", DROP},
       {"{\"v\":1,\"action\":\"pause\"}", PAUSE},
-      {"{\"v\":1,\"action\":\"restart\"}", RESTART}
+      {"{\"v\":1,\"action\":\"restart\"}", RESTART},
+      {R"({"v":1,"action":"help"})", SHOW_HELP}
     };
     for (const auto& command : commands) if (value == command.text) {
       Event event{command.action, info.getConnHandle(), false};
@@ -329,11 +342,11 @@ size_t buildState(char* output, size_t capacity) {
       if (!append(output, capacity, length, "%s%u", col ? "," : "", game.active.cells[row][col])) return 0;
     if (!append(output, capacity, length, "]")) return 0;
   }
-  const char* status = game.status == PLAYING ? "playing" : game.status == PAUSED ? "paused" : "over";
+  const char* statuses[] = {"playing", "paused", "over", "menu", "help"};
   if (!append(output, capacity, length,
-      "],\"x\":%d,\"y\":%d},\"next\":%u,\"score\":%lu,\"lines\":%lu,\"level\":%lu,\"status\":\"%s\"}\n",
+      "],\"x\":%d,\"y\":%d},\"next\":%u,\"score\":%lu,\"lines\":%lu,\"level\":%lu,\"status\":\"%s\",\"menuSelection\":%u}\n",
       game.active.x, game.active.y, game.next,
-      (unsigned long)game.score, (unsigned long)game.lines, (unsigned long)game.level, status)) return 0;
+      (unsigned long)game.score, (unsigned long)game.lines, (unsigned long)game.level, statuses[game.status], game.menuSelection)) return 0;
   return length;
 }
 
@@ -406,6 +419,25 @@ void updateSound(uint32_t now) {
 }
 
 void applyAction(Action action) {
+  if (game.status == MENU && (action == LEFT || action == DOWN)) {
+    game.menuSelection = action == LEFT ? 1 : 0;
+    stateDirty = true;
+    return;
+  }
+  if (action == ROTATE && (game.status == MENU || game.status == HELP)) {
+    if (game.status == HELP) game.status = MENU;
+    else if (game.menuSelection == 0) game.start();
+    else game.status = HELP;
+    stateDirty = true;
+    return;
+  }
+  if (action == SHOW_HELP && game.status == MENU) {
+    game.menuSelection = 1;
+    game.status = HELP;
+    stateDirty = true;
+    return;
+  }
+
   bool changed = false;
   switch (action) {
     case SYNC: forceState = true; changed = true; break;
@@ -428,23 +460,37 @@ void pollButtons(uint32_t now) {
     if (reading != button.stable && now - button.changedAt >= 25) {
       button.stable = reading;
       if (reading == LOW) {
+        const bool playing = game.status == PLAYING;
         applyAction(button.action);
-        button.nextRepeat = now + 160;
+        button.nextRepeat = playing && button.action == DOWN ? now + 160 : 0;
       }
     }
-    if (button.stable == LOW && button.action != ROTATE && int32_t(now - button.nextRepeat) >= 0) {
+    if (game.status == PLAYING && button.stable == LOW && button.nextRepeat && button.action == DOWN && int32_t(now - button.nextRepeat) >= 0) {
       applyAction(button.action);
       button.nextRepeat = now + 65;
     }
   }
 }
 
+void updateBluetoothLeds() {
+  digitalWrite(PIN_BT_RED, connected ? LOW : HIGH);
+  digitalWrite(PIN_BT_GREEN, connected ? HIGH : LOW);
+}
+
 void setup() {
   Serial.begin(115200);
   randomSeed(esp_random());
   for (Button& button : buttons) pinMode(button.pin, INPUT_PULLUP);
+  for (uint8_t pin : BUTTON_LED_PINS) {
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, HIGH);
+  }
+  pinMode(PIN_BT_RED, OUTPUT);
+  pinMode(PIN_BT_GREEN, OUTPUT);
+  updateBluetoothLeds();
   setupBuzzer();
   game.start();
+  game.openMenu();
   eventQueue = xQueueCreate(24, sizeof(Event));
   if (!eventQueue) { Serial.println("BLE queue allocation failed"); while (true) delay(1000); }
 
@@ -479,11 +525,16 @@ void loop() {
       connected = true;
       subscribed = false;
       connectionHandle = event.handle;
+      game.openMenu();
+      for (Button& button : buttons) button.nextRepeat = 0;
       stateDirty = true;
       needsResync = false;
+      updateBluetoothLeds();
       Serial.println("Browser connected");
     } else if (event.action == DISCONNECT && event.handle == connectionHandle) {
       connected = subscribed = false;
+      game.openMenu();
+      updateBluetoothLeds();
       Serial.println("Browser disconnected; advertising again");
     } else if (event.action == SUBSCRIBE && event.handle == connectionHandle) {
       subscribed = event.enabled;

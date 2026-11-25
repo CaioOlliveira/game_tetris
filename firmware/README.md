@@ -6,12 +6,19 @@ Este firmware roda o jogo no **ESP32 DevKit / WROOM-32** e envia o tabuleiro por
 
 | Componente | ESP32 | Outra ponta |
 |---|---|---|
-| Botão esquerdo | GPIO 25 | GND |
-| Botão girar | GPIO 26 | GND |
-| Botão direito | GPIO 27 | GND |
-| Buzzer **passivo** | GPIO 33 | GND, com circuito de acionamento adequado ao buzzer |
+| Esquerda | GPIO 25 | GND |
+| LED esquerda | GPIO 13 | GND via resistor em série |
+| Direita | GPIO 27 | GND |
+| LED direita | GPIO 14 | GND via resistor em série |
+| Girar | GPIO 15 | GND |
+| LED girar | GPIO 16 | GND via resistor em série |
+| Descer | GPIO 21 | GND |
+| LED descer | GPIO 17 | GND via resistor em série |
+| Buzzer passivo | GPIO 33 | GND, com circuito de acionamento adequado ao buzzer |
+| Bluetooth vermelho | GPIO 18 | GND via resistor em série |
+| Bluetooth verde | GPIO 19 | GND via resistor em série |
 
-Os botões usam `INPUT_PULLUP`: ficam em nível alto quando soltos e são acionados ao ligar o pino ao GND. O código trata bounce e repete esquerda/direita ao segurar. Para o buzzer, confira corrente e tensão do seu módulo; se exceder a capacidade do GPIO, use transistor e resistor. Um buzzer ativo não reproduz as notas do PWM corretamente.
+Os botões usam `INPUT_PULLUP`: ficam em nível alto quando soltos e são acionados ao ligar o pino ao GND. Esquerda, Direita e Girar atuam uma vez por clique. Durante a partida, segurar Descer acelera a queda. Os quatro LEDs dos botões permanecem acesos. O vermelho indica Bluetooth desconectado e o verde indica conexão ativa. Para o buzzer, confira corrente e tensão do seu módulo; se exceder a capacidade do GPIO, use transistor e resistor. Um buzzer ativo não reproduz as notas do PWM corretamente.
 
 ## Instalação e gravação
 
@@ -35,6 +42,6 @@ arduino-cli compile --fqbn esp32:esp32:esp32 firmware/tetris_esp32
 
 O ESP32 anuncia o serviço `702a0001-3a5a-4b2e-9f4c-18c8e6503200`. O site descobre esse serviço, assina notificações do estado e envia `sync`. O ESP32 responde com um JSON terminado em `\n` e continua enviando o estado quando o jogo muda. Mensagens maiores que o MTU negociado são divididas entre notificações, que o site reúne antes de interpretar. Os comandos do site incluem mover, girar, descer, queda instantânea, pausar e reiniciar. O jogo usa as mesmas peças, rotação SRS, pontuação, gravidade e tempo de fixação do modo local.
 
-O site requer **HTTPS** e um navegador com Web Bluetooth, como Chrome no Android ou em desktop com suporte Bluetooth. O modo local do site continua disponível nos demais navegadores. O firmware foi preparado para um navegador conectado por vez. Se você usar outra variante de ESP32, confira se ela tem BLE e adapte os quatro GPIOs no início do arquivo `.ino`.
+O site requer **HTTPS** e um navegador com Web Bluetooth, como Chrome no Android ou em desktop com suporte Bluetooth. O modo local do site continua disponível nos demais navegadores. O firmware foi preparado para um navegador conectado por vez. Se você usar outra variante de ESP32, confira se ela tem BLE e adapte os GPIOs no início do arquivo `.ino`.
 
-O projeto foi compilado para ESP32 Dev Module, mas a conexão BLE e os componentes físicos precisam ser conferidos no seu hardware.
+Ao conectar, o ESP32 exibe o menu no navegador. No controle físico, Esquerda seleciona Como jogar, Descida rápida seleciona Começar e Girar confirma. Ao abrir o manual, pressione Girar novamente para voltar ao menu.

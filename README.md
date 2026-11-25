@@ -14,7 +14,7 @@ Abra `dist/index.html` diretamente no Chrome ou em outro navegador moderno. Não
 
 | Ação | Teclado | Celular |
 |---|---|---|
-| Mover | ← / → | Esquerda / Direita; segure para repetir |
+| Mover | ← / → | Esquerda / Direita, uma vez por clique |
 | Girar horário | ↑ | Girar |
 | Queda acelerada | ↓ | Descer; segure para repetir |
 | Queda instantânea | Espaço | Use o teclado; a descida por toque é acelerada |
@@ -27,7 +27,7 @@ Uma, duas, três ou quatro linhas simultâneas valem 100, 300, 500 ou 800 pontos
 
 ## Display
 
-O Canvas tem resolução interna **240 × 320**, ampliada por CSS em proporção 3:4. Isso simula os pixels do TFT; o tamanho físico de 2,4 polegadas depende da densidade e escala da tela do usuário. Tabuleiro 10 × 20, células de 12 pixels, pontuação, nível, linhas e próxima peça cabem no próprio Canvas. O menu inicial fica sobre a área do display. Não há rolagem interna.
+O Canvas tem resolução interna **240 × 320**, ampliada por CSS em proporção 3:4. Isso simula os pixels do TFT; o tamanho físico de 2,4 polegadas depende da densidade e escala da tela do usuário. Tabuleiro 10 × 20, células de 15 pixels, pontuação, nível, linhas e próxima peça cabem no próprio Canvas. O menu inicial fica sobre a área do display. Não há rolagem interna.
 
 ## Organização
 
@@ -61,12 +61,14 @@ Exemplo do formato de estado (substitua board por uma matriz real de 20 arrays d
   v: 1,
   board: Array.from({length:20},()=>Array(10).fill(0)),
   active: {id:3, m:[[0,3,0],[3,3,3],[0,0,0]], x:3, y:0},
-  next: 1, score: 0, lines: 0, level: 1, status: 'playing'
+  next: 1, score: 0, lines: 0, level: 1, status: 'playing', menuSelection: 0
 }
 ```
 
-IDs: 0 vazio, 1 I, 2 O, 3 T, 4 S, 5 Z, 6 J, 7 L. `board` contém apenas blocos fixos. `active` é a peça em movimento (ou null), com matriz quadrada de 2 a 4 células por lado, exatamente quatro blocos do seu ID, e coordenadas relativas ao topo esquerdo do tabuleiro. Y negativo é permitido no nascimento. `status`: `playing`, `paused` ou `over`. O ESP32 envia estados após cada alteração e responde a `sync` imediatamente com o estado atual.
+IDs: 0 vazio, 1 I, 2 O, 3 T, 4 S, 5 Z, 6 J, 7 L. `board` contém apenas blocos fixos. `active` é a peça em movimento (ou null), com matriz quadrada de 2 a 4 células por lado, exatamente quatro blocos do seu ID, e coordenadas relativas ao topo esquerdo do tabuleiro. Y negativo é permitido no nascimento. `status`: `menu`, `help`, `playing`, `paused` ou `over`. No menu, `menuSelection` vale 0 para Começar e 1 para Como jogar. O ESP32 envia estados após cada alteração e responde a `sync` imediatamente com o estado atual.
 
-Comandos do site: `{"v":1,"action":"left"}\n`. Ações: `left`, `right`, `rotate`, `down`, `drop`, `pause` (alternar), `restart` e `sync`. As escritas são serializadas para evitar operações GATT simultâneas. Cada comando é um evento discreto; o site repete eventos de movimento ao segurar botões. GPIO 25 (esquerda), 26 (girar), 27 (direita) devem ser lidos e tratados com debounce pelo firmware. GPIO 33 controla o buzzer passivo; os efeitos Web Audio servem como referência, não enviam áudio ao buzzer.
+Comandos do site: `{"v":1,"action":"left"}\n`. Ações: `left`, `right`, `rotate`, `down`, `drop`, `pause` (alternar), `restart`, `help` (abrir o manual no menu) e `sync`. As escritas são serializadas para evitar operações GATT simultâneas. Cada comando é um evento discreto; o site repete a descida ao segurar Descer. GPIO 25 (esquerda), 15 (girar), 27 (direita) e 21 (descida rápida) devem ser lidos e tratados com debounce pelo firmware. GPIO 33 controla o buzzer passivo; os efeitos Web Audio servem como referência, não enviam áudio ao buzzer.
 
 O firmware mantém a lógica oficial, pontuação, gravidade, botões físicos e buzzer. O navegador mostra o estado remoto e oferece controles auxiliares. Com MTU BLE pequeno, o firmware fragmenta o JSON e agrupa atualizações rápidas para manter o estado mais recente. A ligação real com o hardware ainda precisa de teste na bancada.
+
+Depois de conectar, o ESP32 aguarda no menu. Esquerda seleciona Como jogar, Descida rápida volta para Começar e Girar confirma a opção ou fecha o manual. Atualize o firmware para navegar com os botões físicos.

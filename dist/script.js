@@ -34,9 +34,51 @@ class TFTRenderer {
   constructor(canvas){this.ctx=canvas.getContext('2d');this.ctx.imageSmoothingEnabled=false;}
   text(str,x,y,size=8,color='#a8b79b'){const c=this.ctx;c.fillStyle=color;c.font=`${size}px monospace`;c.textAlign='left';c.fillText(str,x,y);}
   block(x,y,id,s=12,ghost=false){const c=this.ctx;c.fillStyle=COLORS[id];if(ghost){c.strokeStyle=COLORS[id];c.globalAlpha=.3;c.strokeRect(x+1.5,y+1.5,s-3,s-3);c.globalAlpha=1;return;}c.fillRect(x+1,y+1,s-2,s-2);c.fillStyle='#ffffff40';c.fillRect(x+2,y+2,s-4,2);c.fillStyle='#0003';c.fillRect(x+2,y+s-4,s-4,2);}
-  draw(g,remote=false){const c=this.ctx;c.fillStyle='#101a14';c.fillRect(0,0,240,320);this.text('TETRIS',12,20,15,'#c4f66b');this.text(remote?'BLE':'ESP32',190,18,8);c.strokeStyle='#33442c';c.strokeRect(10.5,34.5,122,242);for(let y=0;y<20;y++)for(let x=0;x<10;x++){c.fillStyle='#1c281b';c.fillRect(12+x*12,36+y*12,11,11);if(g.board[y][x])this.block(12+x*12,36+y*12,g.board[y][x]);}
-    const a=g.active;if(a){let gy=a.y;if(!remote){while(!g.collides(a.m,a.x,gy+1))gy++;}a.m.forEach((row,dy)=>row.forEach((id,dx)=>{if(!id)return;if(!remote&&gy+dy>=0)this.block(12+(a.x+dx)*12,36+(gy+dy)*12,id,12,true);if(a.y+dy>=0)this.block(12+(a.x+dx)*12,36+(a.y+dy)*12,id);}));}
-    this.text('PONTOS',147,47,7);this.text(String(g.score).padStart(6,'0'),147,65,13,'#eef0db');this.text('NÍVEL',147,94,7);this.text(String(g.level).padStart(2,'0'),147,112,15,'#c4f66b');this.text('LINHAS',147,141,7);this.text(String(g.lines).padStart(3,'0'),147,159,13,'#eef0db');this.text('PRÓXIMA',147,192,7);const m=SHAPES[g.next];if(m)m.forEach((row,y)=>row.forEach((id,x)=>{if(id)this.block(147+x*16,203+y*16,id,16);}));this.text(remote?'ESP32 CONECTADO':'P / PAUSAR',12,297,8);this.text('10 × 20',187,297,7);if(g.status==='paused'||g.status==='over'){c.fillStyle='#081009dd';c.fillRect(11,35,122,241);this.text(g.status==='over'?'GAME OVER':'PAUSADO',23,145,14,'#c4f66b');this.text(g.status==='over'?'REINICIAR ABAIXO':'P / CONTINUAR',20,166,7);}}
+  draw(g, remote=false) {
+    const c = this.ctx, left = 8, top = 10, cell = 15, hud = 169;
+    c.fillStyle = '#100b22';
+    c.fillRect(0, 0, 240, 320);
+    c.strokeStyle = '#6454ac';
+    c.strokeRect(left - .5, top - .5, 151, 301);
+    for (let y = 0; y < 20; y++) for (let x = 0; x < 10; x++) {
+      const px = left + x * cell, py = top + y * cell;
+      c.fillStyle = '#201737';
+      c.fillRect(px, py, cell - 1, cell - 1);
+      if (g.board[y][x]) this.block(px, py, g.board[y][x], cell);
+    }
+
+    const piece = g.active;
+    if (piece) {
+      let ghostY = piece.y;
+      if (!remote) while (!g.collides(piece.m, piece.x, ghostY + 1)) ghostY++;
+      piece.m.forEach((row, dy) => row.forEach((id, dx) => {
+        if (!id) return;
+        const x = left + (piece.x + dx) * cell;
+        if (!remote && ghostY + dy >= 0) this.block(x, top + (ghostY + dy) * cell, id, cell, true);
+        if (piece.y + dy >= 0) this.block(x, top + (piece.y + dy) * cell, id, cell);
+      }));
+    }
+
+    for (const [label, value, y] of [
+      ['PONTOS', g.score, 33], ['NÍVEL', g.level, 91], ['LINHAS', g.lines, 149]
+    ]) {
+      this.text(label, hud, y, 8, '#bcace4');
+      const digits = String(value);
+      this.text(digits, hud, y + 21, digits.length > 7 ? 12 : 15, '#fff2ff');
+    }
+    this.text('PRÓXIMA', hud, 207, 8, '#bcace4');
+    SHAPES[g.next]?.forEach((row, y) => row.forEach((id, x) => {
+      if (id) this.block(hud + x * 14, 219 + y * 14, id, 14);
+    }));
+    this.text(remote ? 'ESP32' : 'OFFLINE', hud, 302, 8, '#8cf8f2');
+    if (g.status === 'paused' || g.status === 'over') {
+      const over = g.status === 'over';
+      c.fillStyle = '#100b22ee';
+      c.fillRect(left, 128, 150, 65);
+      this.text(over ? 'GAME OVER' : 'PAUSADO', 29, 153, 18, '#8cf8f2');
+      this.text(over ? 'REINICIAR ABAIXO' : 'P / CONTINUAR', 29, 174, 8, '#fff2ff');
+    }
+  }
 }
 
 // Proposed protocol, NOT UUIDs from an existing firmware. See README.
@@ -45,7 +87,7 @@ class ESP32BLE {
   constructor(onState,onStatus){this.onState=onState;this.onStatus=onStatus;this.connected=false;this.buffer='';this.decoder=new TextDecoder();this.queue=Promise.resolve();}
   async connect(){if(!navigator.bluetooth)throw Error('Web Bluetooth indisponível. Use Chrome Android/desktop compatível e HTTPS ou localhost.');if(!window.isSecureContext)throw Error('Bluetooth exige HTTPS ou localhost. O modo offline continua disponível.');this.onStatus('Procurando ESP32…');try{this.device=await navigator.bluetooth.requestDevice({filters:[{services:[BLE_CONFIG.service]}]});this.device.addEventListener('gattserverdisconnected',()=>this.disconnected());const server=await this.device.gatt.connect(),service=await server.getPrimaryService(BLE_CONFIG.service);this.state=await service.getCharacteristic(BLE_CONFIG.state);this.command=await service.getCharacteristic(BLE_CONFIG.command);this.buffer='';this.decoder=new TextDecoder();this.state.addEventListener('characteristicvaluechanged',e=>this.receive(e.target.value));await this.state.startNotifications();this.connected=true;this.onStatus('Conectado · aguardando estado do ESP32');await this.send('sync');}catch(e){this.disconnect();throw e;}}
   receive(value){this.buffer+=this.decoder.decode(value,{stream:true});if(this.buffer.length>16384){this.buffer='';this.onStatus('Pacote BLE excede o limite.');return;}let at;while((at=this.buffer.indexOf('\n'))>=0){const line=this.buffer.slice(0,at);this.buffer=this.buffer.slice(at+1);try{const s=JSON.parse(line);if(!ESP32BLE.valid(s))throw Error();this.onState(s);}catch{this.onStatus('Estado BLE inválido; aguardando novo pacote.');}}}
-  static valid(s){const integer=(n,min,max)=>Number.isInteger(n)&&n>=min&&n<=max;return s&&s.v===1&&Array.isArray(s.board)&&s.board.length===20&&s.board.every(r=>Array.isArray(r)&&r.length===10&&r.every(v=>integer(v,0,7)))&&integer(s.score,0,999999999)&&integer(s.lines,0,9999999)&&integer(s.level,1,999999)&&integer(s.next,1,7)&&['playing','paused','over'].includes(s.status)&&(s.active===null||(s.active&&integer(s.active.id,1,7)&&integer(s.active.x,-4,9)&&integer(s.active.y,-4,19)&&Array.isArray(s.active.m)&&s.active.m.length>=2&&s.active.m.length<=4&&s.active.m.every(r=>Array.isArray(r)&&r.length===s.active.m.length&&r.every(v=>v===0||v===s.active.id))&&s.active.m.flat().filter(Boolean).length===4&&s.active.m.every((r,dy)=>r.every((v,dx)=>!v||(s.active.x+dx>=0&&s.active.x+dx<10&&s.active.y+dy<20)))));}
+  static valid(s){const integer=(n,min,max)=>Number.isInteger(n)&&n>=min&&n<=max;return s&&s.v===1&&Array.isArray(s.board)&&s.board.length===20&&s.board.every(r=>Array.isArray(r)&&r.length===10&&r.every(v=>integer(v,0,7)))&&integer(s.score,0,999999999)&&integer(s.lines,0,9999999)&&integer(s.level,1,999999)&&integer(s.next,1,7)&&(['playing','paused','over'].includes(s.status)||['menu','help'].includes(s.status)&&integer(s.menuSelection,0,1))&&(s.menuSelection===undefined||integer(s.menuSelection,0,1))&&(s.active===null||(s.active&&integer(s.active.id,1,7)&&integer(s.active.x,-4,9)&&integer(s.active.y,-4,19)&&Array.isArray(s.active.m)&&s.active.m.length>=2&&s.active.m.length<=4&&s.active.m.every(r=>Array.isArray(r)&&r.length===s.active.m.length&&r.every(v=>v===0||v===s.active.id))&&s.active.m.flat().filter(Boolean).length===4&&s.active.m.every((r,dy)=>r.every((v,dx)=>!v||(s.active.x+dx>=0&&s.active.x+dx<10&&s.active.y+dy<20)))));}
   send(action){if(!this.connected)return Promise.resolve();this.queue=this.queue.catch(()=>{}).then(async()=>{if(this.connected)await this.command.writeValueWithResponse(new TextEncoder().encode(JSON.stringify({v:1,action})+'\n'));}).catch(()=>{this.onStatus('Falha ao enviar comando ao ESP32.');});return this.queue;}
   disconnected(){this.connected=false;this.onStatus('Desconectado · modo offline disponível');}
   disconnect(){if(this.device?.gatt.connected)this.device.gatt.disconnect();this.disconnected();}
@@ -53,22 +95,108 @@ class ESP32BLE {
 
 if(typeof document!=='undefined'){
 const $=id=>document.getElementById(id),audio=new RetroAudio(),game=new TetrisEngine(e=>audio.play(e)),renderer=new TFTRenderer($('display'));
-let remote=null,connecting=false,last=0;
-const overlay=$('overlay');
-const ble=new ESP32BLE(s=>{remote=s;overlay.classList.add('hidden');$('connection-title').textContent='ESP32 conectado';$('connection-status').textContent='Estado recebido · lógica no hardware';},message=>{const active=ble.connected;$('connection-status').textContent=message;$('connection-title').textContent=active?'ESP32 conectado':'Modo independente';$('connect').querySelector('span').textContent=active?'DESCONECTAR':'CONECTAR ESP32';document.querySelector('.local').innerHTML=active?'<i></i> MODO ESP32':'<i></i> MODO OFFLINE';if(!active&&remote){remote=null;game.status='menu';overlay.classList.remove('hidden');}if(active){clearInputs();if(game.status==='playing')game.pause();}});
-function start(){audio.unlock();clearInputs();if(ble.connected){ble.send('restart');return;}game.start();overlay.classList.add('hidden');}
-function action(name){audio.unlock();if(ble.connected){ble.send(name);return;}if(name==='pause'){game.pause();clearInputs();}else if(name==='left')game.move(-1);else if(name==='right')game.move(1);else if(name==='rotate')game.rotate();else if(name==='down')game.down(true);else if(name==='drop')game.hardDrop();}
+let remote = null, connecting = false, last = 0;
+let awaitingStart = true, menuSelection = 0;
+const overlay = $('overlay'), helpDialog = $('help-dialog');
+const menuButtons = [$('start'), $('help')];
+
+function selectMenu(index) {
+  menuSelection = index;
+  menuButtons.forEach((button, i) => button.classList.toggle('selected', i === index));
+}
+
+const ble = new ESP32BLE(state => {
+  remote = state;
+  if (state.menuSelection !== undefined) {
+    selectMenu(state.menuSelection);
+    awaitingStart = state.status === 'menu' || state.status === 'help';
+    if (state.status === 'help' && !helpDialog.open) helpDialog.showModal();
+    if (state.status !== 'help' && helpDialog.open) helpDialog.close();
+  }
+  overlay.classList.toggle('hidden', !awaitingStart);
+  $('connection-title').textContent = 'ESP32 conectado';
+  $('connection-status').textContent = 'Estado recebido · lógica no hardware';
+}, message => {
+  const active = ble.connected;
+  $('connection-status').textContent = message;
+  $('connection-title').textContent = active ? 'ESP32 conectado' : 'Modo independente';
+  $('connect').querySelector('span').textContent = active ? 'DESCONECTAR' : 'CONECTAR ESP32';
+  $('connect-menu').hidden = active;
+  document.querySelector('.local').innerHTML = active ? '<i></i> MODO ESP32' : '<i></i> MODO OFFLINE';
+  if (active || remote) {
+    clearInputs();
+    if (game.status === 'playing') game.pause();
+  }
+  if (!active && remote) {
+    remote = null;
+    game.status = 'menu';
+    if (helpDialog.open) helpDialog.close();
+  }
+  if (active && !remote || !active && game.status === 'menu') {
+    awaitingStart = true;
+    selectMenu(0);
+    overlay.classList.remove('hidden');
+  }
+});
+
+function start() {
+  audio.unlock();
+  clearInputs();
+  if (ble.connected) {
+    if (!remote) return;
+    if (remote.menuSelection === undefined) awaitingStart = false;
+    ble.send('restart');
+    return;
+  }
+  game.start();
+  overlay.classList.add('hidden');
+}
+
+function showHelp() {
+  clearInputs();
+  if (ble.connected && remote?.menuSelection !== undefined) {
+    ble.send('help');
+    return;
+  }
+  if (!helpDialog.open) helpDialog.showModal();
+}
+
+function closeHelp() {
+  if (ble.connected && remote?.status === 'help') ble.send('rotate');
+  else helpDialog.close();
+}
+
+function action(name) {
+  audio.unlock();
+  if (helpDialog.open) {
+    if (name === 'rotate') closeHelp();
+    return;
+  }
+  if (!overlay.classList.contains('hidden')) {
+    if (!['left', 'down', 'rotate'].includes(name)) return;
+    if (ble.connected && !remote) return;
+    if (ble.connected && remote.menuSelection !== undefined) ble.send(name);
+    else if (name === 'rotate') menuButtons[menuSelection].click();
+    else selectMenu(name === 'left' ? 1 : 0);
+    return;
+  }
+  if(ble.connected){ble.send(name);return;}
+  if(name==='pause'){game.pause();clearInputs();}else if(name==='left')game.move(-1);else if(name==='right')game.move(1);else if(name==='rotate')game.rotate();else if(name==='down')game.down(true);else if(name==='drop')game.hardDrop();
+}
 const held=new Map();function clearInputs(){held.clear();document.querySelectorAll('.pressed').forEach(b=>b.classList.remove('pressed'));}
-function press(key,name,button){if(held.has(key))return;action(name);if(['left','right','down'].includes(name))held.set(key,{name,wait:name==='down'?45:160,button});button?.classList.add('pressed');}
+function press(key,name,button){if(held.has(key))return;action(name);if(!helpDialog.open&&overlay.classList.contains('hidden')&&name==='down')held.set(key,{name,wait:45,button});button?.classList.add('pressed');}
 function release(key){const h=held.get(key);h?.button?.classList.remove('pressed');held.delete(key);}
 const keys={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'rotate',ArrowDown:'down',Space:'drop',KeyP:'pause'};
-window.addEventListener('keydown',e=>{if($('help-dialog').open||['INPUT','TEXTAREA','BUTTON'].includes(document.activeElement?.tagName)&&e.code==='Space')return;const name=keys[e.code];if(!name)return;e.preventDefault();if(!e.repeat)press(e.code,name);});window.addEventListener('keyup',e=>release(e.code));
+window.addEventListener('keydown',e=>{if(helpDialog.open&&e.code!=='ArrowUp'||['INPUT','TEXTAREA','BUTTON'].includes(document.activeElement?.tagName)&&e.code==='Space')return;const name=keys[e.code];if(!name)return;e.preventDefault();if(!e.repeat)press(e.code,name);});window.addEventListener('keyup',e=>release(e.code));
 document.querySelectorAll('[data-action]').forEach(b=>{b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);press('pointer'+e.pointerId,b.dataset.action,b);});['pointerup','pointercancel','lostpointercapture'].forEach(event=>b.addEventListener(event,e=>{release('pointer'+e.pointerId);b.classList.remove('pressed');}));b.addEventListener('click',e=>{if(e.detail===0)action(b.dataset.action);});});
 $('start').onclick=start;$('restart').onclick=start;$('pause').onclick=()=>action('pause');$('sound').onclick=()=>{audio.unlock();audio.enabled=!audio.enabled;$('sound').textContent=audio.enabled?'♫ SOM LIGADO':'♫ SOM DESLIGADO';$('sound').setAttribute('aria-pressed',String(audio.enabled));};
-$('help').onclick=()=>{clearInputs();if(!ble.connected&&game.status==='playing')game.pause();$('help-dialog').showModal();};$('close-help').onclick=()=>$('help-dialog').close();
+$('help').onclick=showHelp;
+$('close-help').onclick=closeHelp;
+helpDialog.addEventListener('cancel', event => { event.preventDefault(); closeHelp(); });
+selectMenu(0);
 async function connect(){if(connecting)return;if(ble.connected){ble.disconnect();return;}connecting=true;try{await ble.connect();}catch(e){$('connection-status').textContent=e.name==='NotFoundError'?'Seleção cancelada · modo offline disponível':e.message;}finally{connecting=false;}}
 $('connect').onclick=connect;$('connect-menu').onclick=connect;
 function inactive(){clearInputs();if(game.status==='playing')game.pause();}window.addEventListener('blur',inactive);document.addEventListener('visibilitychange',()=>{if(document.hidden)inactive();last=0;});
-function frame(t){const dt=last?Math.min(t-last,100):0;last=t;if(!document.hidden){for(const h of held.values()){h.wait-=dt;if(h.wait<=0){action(h.name);h.wait+=h.name==='down'?40:65;}}if(!ble.connected)game.tick(dt);renderer.draw(remote||game,Boolean(remote));}requestAnimationFrame(frame);}requestAnimationFrame(frame);
+function frame(t){const dt=last?Math.min(t-last,100):0;last=t;if(!document.hidden){for(const h of held.values()){h.wait-=dt;if(h.wait<=0){action(h.name);h.wait+=40;}}if(!ble.connected)game.tick(dt);renderer.draw(remote||game,Boolean(remote));}requestAnimationFrame(frame);}requestAnimationFrame(frame);
 }
 if(typeof module!=='undefined')module.exports={TetrisEngine,ESP32BLE,SHAPES};

@@ -35,6 +35,59 @@ const assert=require('node:assert/strict');
     const sizes=await evaluate('({body:document.body.scrollWidth,viewport:innerWidth,ratio:document.getElementById("display").getBoundingClientRect().width/document.getElementById("display").getBoundingClientRect().height})');
     assert(sizes.body<=sizes.viewport);assert(Math.abs(sizes.ratio-.75)<.01);
     await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true}).then(r=>writeFileSync(join(tmpdir(),'tetris-mobile.png'),Buffer.from(r.data,'base64')));
+    const bleMenu = await evaluate(`(async () => {
+      const commands = [];
+      const $ = id => document.getElementById(id);
+      const overlay = $('overlay'), helpDialog = $('help-dialog');
+      const state = new EventTarget();
+      state.startNotifications = async () => {};
+      const command = { async writeValueWithResponse(bytes) {
+        commands.push(JSON.parse(new TextDecoder().decode(bytes)).action);
+      }};
+      const service = { async getCharacteristic(id) {
+        return id.startsWith('702a0002') ? state : command;
+      }};
+      const device = new EventTarget();
+      device.gatt = { async connect() { return { getPrimaryService: async () => service }; }};
+      Object.defineProperty(navigator, 'bluetooth', { configurable: true,
+        value: { requestDevice: async () => device } });
+      await $('connect').onclick();
+      const action = name => {
+        const codes = { left: 'ArrowLeft', down: 'ArrowDown', rotate: 'ArrowUp' };
+        for (const type of ['keydown', 'keyup']) {
+          window.dispatchEvent(new KeyboardEvent(type, { code: codes[name] }));
+        }
+      };
+      const update = (status, menuSelection) => {
+        const packet = { v: 1, board: Array.from({length: 20}, () => Array(10).fill(0)),
+          active: null, next: 1, score: 0, lines: 0, level: 1, status, menuSelection };
+        state.value = new TextEncoder().encode(JSON.stringify(packet) + '\\n');
+        state.dispatchEvent(new Event('characteristicvaluechanged'));
+      };
+      update('menu', 0);
+      const staysInMenu = !overlay.classList.contains('hidden') && $('connect-menu').hidden &&
+        $('start').classList.contains('selected');
+      action('left');
+      update('menu', 1);
+      const helpSelected = $('help').classList.contains('selected');
+      action('rotate');
+      update('help', 1);
+      const helpOpened = helpDialog.open;
+      action('rotate');
+      update('menu', 1);
+      const helpClosed = !helpDialog.open;
+      action('down');
+      update('menu', 0);
+      const startSelected = $('start').classList.contains('selected');
+      action('rotate');
+      update('playing', 0);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      return { staysInMenu, helpSelected, helpOpened, helpClosed, startSelected,
+        playing: overlay.classList.contains('hidden'), commands };
+    })()`);
+    assert.deepEqual(bleMenu, { staysInMenu: true, helpSelected: true, helpOpened: true,
+      helpClosed: true, startSelected: true, playing: true,
+      commands: ['sync', 'left', 'rotate', 'rotate', 'down', 'rotate'] });
     assert.deepEqual(errors,[]);console.log('Browser checks passed: menu, start, keyboard, pause, restart, 240x320 canvas, responsive width, 3:4 aspect, no runtime exceptions. Screenshots in TEMP.');
     await call('Browser.close');
   }finally{ws?.close();edge.kill();}

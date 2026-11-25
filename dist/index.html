@@ -3,43 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#111311">
+  <meta name="theme-color" content="#100b22">
   <title>Tetris ESP32 · Pocket Arcade</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header>
     <a class="brand" href="./"><span class="brand-icon">▦</span> POCKET<span>ARCADE</span></a>
-    <span class="edition">HARDWARE SERIES <b> / 001</b></span>
     <span class="local"><i></i> MODO OFFLINE</span>
   </header>
 
   <main>
-    <section class="intro" aria-label="Como jogar">
-      <div class="instructions">
-        <span class="section-label">COMO JOGAR</span>
-        <div><kbd>←</kbd><kbd>→</kbd><span>Mover a peça</span></div>
-        <div><kbd>↑</kbd><span>Girar a peça</span></div>
-        <div><kbd>↓</kbd><span>Acelerar a queda</span></div>
-        <div><kbd class="wide">ESPAÇO</kbd><span>Queda instantânea</span></div>
-        <div><kbd>P</kbd><span>Pausar / continuar</span></div>
-      </div>
-      <p class="touch-note">NO CELULAR? USE OS BOTÕES ABAIXO DO JOGO.</p>
-    </section>
-
     <section class="console-zone" aria-label="Jogo Tetris">
       <div class="device">
         <div class="screen">
           <canvas id="display" width="240" height="320" aria-label="Tabuleiro Tetris de 10 colunas e 20 linhas"></canvas>
           <div id="overlay" class="overlay">
-            <div class="pixel-mark">▟</div>
-            <span class="micro">THE ORIGINAL BLOCK GAME</span>
+            <div class="pixel-mark" aria-hidden="true">▟</div>
             <h2>TETRIS<span>ESP32</span></h2>
-            <p id="menu-message">Encaixe. Complete. Repita.</p>
-            <button id="start" class="primary">INICIAR JOGO <span>↗</span></button>
+            <button id="start" class="selected">COMEÇAR</button>
             <button id="help">COMO JOGAR</button>
-            <button id="connect-menu">CONECTAR ESP32 <span>⌁</span></button>
-            <span class="menu-footer">PRONTO PARA JOGAR · SEM CONEXÃO</span>
+            <button id="connect-menu">CONECTAR ESP32</button>
+            <p class="menu-hint">Esquerda ↓ · Descida rápida ↑ · Girar confirma</p>
           </div>
         </div>
       </div>
@@ -58,30 +43,32 @@
 
     <aside>
       <div class="section-label">CONEXÃO</div>
-      <h3>Do navegador<br>para a bancada.</h3>
-      <p>Jogue agora. Conecte seu ESP32 quando o hardware estiver pronto.</p>
       <div class="connection"><span id="connection-dot"></span><div><strong id="connection-title">Modo independente</strong><small id="connection-status" role="status">Lógica executada no navegador</small></div></div>
       <button id="connect" class="outline">⌁ <span>CONECTAR ESP32</span> ↗</button>
       <div class="wiring">
         <span class="section-label">MAPA DO HARDWARE</span>
         <div><span>Esquerda</span><code>GPIO 25</code></div>
-        <div><span>Rotação</span><code>GPIO 26</code></div>
+        <div><span>LED esquerda</span><code>GPIO 13</code></div>
         <div><span>Direita</span><code>GPIO 27</code></div>
+        <div><span>LED direita</span><code>GPIO 14</code></div>
+        <div><span>Girar</span><code>GPIO 15</code></div>
+        <div><span>LED girar</span><code>GPIO 16</code></div>
+        <div><span>Descer</span><code>GPIO 21</code></div>
+        <div><span>LED descer</span><code>GPIO 17</code></div>
         <div><span>Buzzer passivo</span><code>GPIO 33</code></div>
+        <div><span>Bluetooth vermelho</span><code>GPIO 18</code></div>
+        <div><span>Bluetooth verde</span><code>GPIO 19</code></div>
       </div>
-      <div class="note"><span>⌘</span><p>Feito para experimentar.<br><strong>O próximo nível é físico.</strong></p></div>
     </aside>
   </main>
 
-  <footer><span>UM CLÁSSICO, RECONSTRUÍDO PARA CRIAR.</span></footer>
   <dialog id="help-dialog">
     <button id="close-help" aria-label="Fechar">×</button>
-    <span class="eyebrow">MANUAL RÁPIDO</span>
-    <h2>Uma linha de cada vez.</h2>
+    <h2>Como jogar</h2>
     <p>Complete linhas horizontais para eliminá-las. A cada 10 linhas, o nível e a velocidade aumentam.</p>
-    <p>Use ← → para mover, ↑ para girar, ↓ para descer, Espaço para queda instantânea e P para pausar. No celular, mantenha os botões de direção pressionados para repetir.</p>
-    <p>1 / 2 / 3 / 4 linhas valem 100 / 300 / 500 / 800 pontos × nível. Quedas manuais também somam pontos.</p>
-    <p>O Bluetooth requer um ESP32 com o firmware e os UUIDs descritos no README. Sem hardware, todas as funções locais continuam disponíveis.</p>
+    <p><strong>No menu:</strong> Esquerda seleciona a opção de baixo, Descida rápida seleciona a de cima e Girar confirma ou volta do manual.</p>
+    <p><strong>Na partida:</strong> Esquerda e Direita movem a peça, Girar roda e Descida rápida acelera a queda.</p>
+    <p><strong>No teclado:</strong> ← e → movem, ↑ gira, ↓ acelera a queda, Espaço faz a queda instantânea e P pausa.</p>
   </dialog>
   <script src="script.js"></script>
 </body>
