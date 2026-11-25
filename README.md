@@ -18,8 +18,8 @@ Abra `dist/index.html` diretamente no Chrome ou em outro navegador moderno. Não
 | Girar horário | ↑ | Girar |
 | Queda acelerada | ↓ | Descer; segure para repetir |
 | Queda instantânea | Espaço | Disponível pelo teclado |
-| Pausar / continuar | P | Segurar Girar para pausar, clicar para continuar |
-| Nova partida | ↑ no fim da partida | Girar no fim da partida |
+| Pausar / continuar | P | Botão Pausar / Continuar na tela |
+| Nova partida | Ativar Jogar novamente na tela | Toque em Jogar novamente |
 
 São sete peças embaralhadas pelo sistema 7-bag (cada conjunto contém todas as sete). A rotação usa os ajustes SRS de parede e piso para I e demais peças; O não muda. A sombra indica onde a peça cairá. Há 500 ms para ajustar uma peça no chão, com até 15 reinicializações desse tempo por peça. Peças fixadas acima do topo ou uma nova peça bloqueada encerram a partida. Ao trocar de janela, a partida local pausa.
 
@@ -73,4 +73,4 @@ O firmware mantém a lógica oficial, pontuação, gravidade, botões físicos e
 
 Depois de conectar, o ESP32 aguarda no menu. Esquerda seleciona Como jogar, Descida rápida volta para Começar e Girar confirma a opção ou fecha o manual. Atualize o firmware para navegar com os botões físicos.
 
-O menu e o manual usam notificações compactas com os campos `v`, `status` e `menuSelection`. Na pausa ou no fim da partida, Esquerda volta ao menu. A tela oferece um único botão abaixo do tabuleiro para pausar ou continuar.
+A tela oferece um único botão abaixo do tabuleiro para pausar ou continuar.

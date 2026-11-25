@@ -75,8 +75,7 @@ class TFTRenderer {
       c.fillStyle = '#100b22ee';
       c.fillRect(left, 128, 150, 65);
       this.text('PAUSADO', 29, 153, 18, '#8cf8f2');
-      this.text(remote && g.controls === 2 ? 'GIRAR / CONTINUAR' : 'P / CONTINUAR', 16, 170, 8, '#fff2ff');
-      if (!remote || g.controls === 2) this.text('ESQUERDA / MENU', 16, 184, 8, '#fff2ff');
+      this.text('TOQUE EM CONTINUAR', 16, 170, 8, '#fff2ff');
     }
   }
 }
@@ -122,10 +121,8 @@ const ble = new ESP32BLE(state => {
   remote = state;
   const legacy = state.menuSelection === undefined;
   if (!legacy) selectMenu(state.menuSelection);
-  $('round-end').querySelector('p').hidden = state.controls !== 2;
   $('menu-hint').textContent = legacy ? legacyHint : 'Esquerda ↓ · Descer ↑ · Girar confirma';
-  const status = state.controls === 2 ? 'Controle físico conectado' : 'Atualize o firmware para controlar todas as telas da partida.';
-  $('connection-status').textContent = legacy ? legacyHint : status;
+  $('connection-status').textContent = legacy ? legacyHint : 'Controle físico conectado';
   showScreen(legacy && !legacyStarted ? (helpDialog.open ? 'help' : 'menu') : state.status);
 }, message => {
   const active = ble.connected;
@@ -137,7 +134,6 @@ const ble = new ESP32BLE(state => {
   if (!active && (remote || game.status === 'menu' || !connecting)) {
     remote = null;
     legacyStarted = false;
-    $('round-end').querySelector('p').hidden = false;
     game.status = 'menu';
     selectMenu(0);
     showScreen('menu');
@@ -189,16 +185,6 @@ function action(name) {
     else if (name === 'rotate') menuButtons[menuSelection].click();
     else selectMenu(name === 'left' ? 1 : 0);
     return;
-  }
-  if (screen === 'paused' || screen === 'over') {
-    if (name === 'rotate' && screen === 'over') { start(); return; }
-    if (name === 'rotate') name = 'pause';
-    if (name === 'left' && !ble.connected) {
-      game.status = 'menu';
-      selectMenu(0);
-      showScreen('menu');
-      return;
-    }
   }
   if(ble.connected){ble.send(name);return;}
   if(name==='pause'){game.pause();showScreen(game.status);clearInputs();}else if(name==='left')game.move(-1);else if(name==='right')game.move(1);else if(name==='rotate')game.rotate();else if(name==='down')game.down(true);else if(name==='drop')game.hardDrop();

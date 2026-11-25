@@ -55,7 +55,7 @@ const assert=require('node:assert/strict');
         value: { requestDevice: async () => device } });
       await $('connect').onclick();
       const update = (status, menuSelection) => {
-        const packet = ['menu', 'help'].includes(status) ? { v: 1, controls: 2, status, menuSelection } : { v: 1, controls: 2, board: Array.from({length: 20}, () => Array(10).fill(0)),
+        const packet = { v: 1, board: Array.from({length: 20}, () => Array(10).fill(0)),
           active: null, next: 1, score: 0, lines: 0, level: 1, status, menuSelection };
         state.value = new TextEncoder().encode(JSON.stringify(packet) + '\\n');
         state.dispatchEvent(new Event('characteristicvaluechanged'));

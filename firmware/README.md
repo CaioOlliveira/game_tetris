@@ -45,5 +45,3 @@ O ESP32 anuncia o serviço `702a0001-3a5a-4b2e-9f4c-18c8e6503200`. O site descob
 O site requer **HTTPS** e um navegador com Web Bluetooth, como Chrome no Android ou em desktop com suporte Bluetooth. O modo local do site continua disponível nos demais navegadores. O firmware foi preparado para um navegador conectado por vez. Se você usar outra variante de ESP32, confira se ela tem BLE e adapte os GPIOs no início do arquivo `.ino`.
 
 Ao conectar, o ESP32 exibe o menu no navegador. No controle físico, Esquerda seleciona Como jogar, Descida rápida seleciona Começar e Girar confirma. Ao abrir o manual, pressione Girar novamente para voltar ao menu.
-
-Na partida, um toque curto em Girar roda a peça ao soltar. Segurar Girar por 0,7 segundo pausa. Na pausa, Girar continua. No fim da partida, Girar inicia outra. Esquerda volta ao menu nas duas telas.
