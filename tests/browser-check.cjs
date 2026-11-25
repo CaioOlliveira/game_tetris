@@ -31,7 +31,9 @@ const assert=require('node:assert/strict');
     await call('Input.dispatchKeyEvent',{type:'keyDown',code:'Space',key:' '});await call('Input.dispatchKeyEvent',{type:'keyUp',code:'Space',key:' '});
     await evaluate('document.getElementById("pause").click()');
     await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
-    await evaluate('document.getElementById("restart").click()');
+    assert.equal(await evaluate('document.querySelectorAll(".controls button").length'), 1);
+    assert.equal(await evaluate('document.getElementById("pause").textContent'), 'CONTINUAR');
+    await evaluate('document.getElementById("pause").click()');
     const sizes=await evaluate('({body:document.body.scrollWidth,viewport:innerWidth,ratio:document.getElementById("display").getBoundingClientRect().width/document.getElementById("display").getBoundingClientRect().height})');
     assert(sizes.body<=sizes.viewport);assert(Math.abs(sizes.ratio-.75)<.01);
     await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true}).then(r=>writeFileSync(join(tmpdir(),'tetris-mobile.png'),Buffer.from(r.data,'base64')));
@@ -52,14 +54,8 @@ const assert=require('node:assert/strict');
       Object.defineProperty(navigator, 'bluetooth', { configurable: true,
         value: { requestDevice: async () => device } });
       await $('connect').onclick();
-      const action = name => {
-        const codes = { left: 'ArrowLeft', down: 'ArrowDown', rotate: 'ArrowUp' };
-        for (const type of ['keydown', 'keyup']) {
-          window.dispatchEvent(new KeyboardEvent(type, { code: codes[name] }));
-        }
-      };
       const update = (status, menuSelection) => {
-        const packet = { v: 1, board: Array.from({length: 20}, () => Array(10).fill(0)),
+        const packet = ['menu', 'help'].includes(status) ? { v: 1, controls: 2, status, menuSelection } : { v: 1, controls: 2, board: Array.from({length: 20}, () => Array(10).fill(0)),
           active: null, next: 1, score: 0, lines: 0, level: 1, status, menuSelection };
         state.value = new TextEncoder().encode(JSON.stringify(packet) + '\\n');
         state.dispatchEvent(new Event('characteristicvaluechanged'));
@@ -67,27 +63,33 @@ const assert=require('node:assert/strict');
       update('menu', 0);
       const staysInMenu = !overlay.classList.contains('hidden') && $('connect-menu').hidden &&
         $('start').classList.contains('selected');
-      action('left');
+      update('playing');
+      const legacyWarning = $('menu-hint').textContent.includes('firmware');
+      update('menu', 0);
+      // Physical button presses arrive solely as board notifications.
       update('menu', 1);
       const helpSelected = $('help').classList.contains('selected');
-      action('rotate');
       update('help', 1);
       const helpOpened = helpDialog.open;
-      action('rotate');
       update('menu', 1);
       const helpClosed = !helpDialog.open;
-      action('down');
       update('menu', 0);
       const startSelected = $('start').classList.contains('selected');
-      action('rotate');
+      update('playing', 0);
+      update('paused', 0);
+      const paused = $('pause').textContent === 'CONTINUAR';
+      update('menu', 0);
+      update('playing', 0);
+      update('over', 0);
+      const over = !$('round-end').classList.contains('hidden');
       update('playing', 0);
       await new Promise(resolve => setTimeout(resolve, 0));
-      return { staysInMenu, helpSelected, helpOpened, helpClosed, startSelected,
+      return { legacyWarning, paused, over, staysInMenu, helpSelected, helpOpened, helpClosed, startSelected,
         playing: overlay.classList.contains('hidden'), commands };
     })()`);
-    assert.deepEqual(bleMenu, { staysInMenu: true, helpSelected: true, helpOpened: true,
+    assert.deepEqual(bleMenu, { legacyWarning: true, paused: true, over: true, staysInMenu: true, helpSelected: true, helpOpened: true,
       helpClosed: true, startSelected: true, playing: true,
-      commands: ['sync', 'left', 'rotate', 'rotate', 'down', 'rotate'] });
+      commands: ['sync'] });
     assert.deepEqual(errors,[]);console.log('Browser checks passed: menu, start, keyboard, pause, restart, 240x320 canvas, responsive width, 3:4 aspect, no runtime exceptions. Screenshots in TEMP.');
     await call('Browser.close');
   }finally{ws?.close();edge.kill();}

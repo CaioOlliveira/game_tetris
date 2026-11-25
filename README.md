@@ -8,22 +8,22 @@ Para publicar pela interface da Vercel, importe `CaioOlliveira/game_tetris`, man
 
 ## Abrir e jogar
 
-Abra `dist/index.html` diretamente no Chrome ou em outro navegador moderno. Não exige servidor, instalação, ESP32 ou internet. Clique em **INICIAR JOGO** no display. Os arquivos `index.html`, `style.css` e `script.js` ficam juntos em `dist/`, prontos para copiar para o celular ou hospedar. A interface utiliza fontes locais e não faz requisições externas.
+Abra `dist/index.html` diretamente no Chrome ou em outro navegador moderno. Não exige servidor, instalação, ESP32 ou internet. Clique em **COMEÇAR** no display. Os arquivos `index.html`, `style.css` e `script.js` ficam juntos em `dist/`, prontos para copiar para o celular ou hospedar. A interface utiliza fontes locais e não faz requisições externas.
 
 ## Controles e regras
 
-| Ação | Teclado | Celular |
+| Ação | Teclado | ESP32 |
 |---|---|---|
 | Mover | ← / → | Esquerda / Direita, uma vez por clique |
 | Girar horário | ↑ | Girar |
 | Queda acelerada | ↓ | Descer; segure para repetir |
-| Queda instantânea | Espaço | Use o teclado; a descida por toque é acelerada |
-| Pausar / continuar | P | Pausar |
-| Nova partida | Reiniciar | Reiniciar |
+| Queda instantânea | Espaço | Disponível pelo teclado |
+| Pausar / continuar | P | Segurar Girar para pausar, clicar para continuar |
+| Nova partida | ↑ no fim da partida | Girar no fim da partida |
 
 São sete peças embaralhadas pelo sistema 7-bag (cada conjunto contém todas as sete). A rotação usa os ajustes SRS de parede e piso para I e demais peças; O não muda. A sombra indica onde a peça cairá. Há 500 ms para ajustar uma peça no chão, com até 15 reinicializações desse tempo por peça. Peças fixadas acima do topo ou uma nova peça bloqueada encerram a partida. Ao trocar de janela, a partida local pausa.
 
-Uma, duas, três ou quatro linhas simultâneas valem 100, 300, 500 ou 800 pontos multiplicados pelo nível atual. Descida manual soma 1 por célula; queda instantânea soma 2. A cada 10 linhas o nível aumenta. O intervalo de gravidade começa em 800 ms e é multiplicado por 0,8 por nível, limitado a 65 ms. O botão de som controla efeitos Web Audio, habilitados pelo primeiro gesto do usuário.
+Uma, duas, três ou quatro linhas simultâneas valem 100, 300, 500 ou 800 pontos multiplicados pelo nível atual. Descida manual soma 1 por célula; queda instantânea soma 2. A cada 10 linhas o nível aumenta. O intervalo de gravidade começa em 800 ms e é multiplicado por 0,8 por nível, limitado a 65 ms. O primeiro gesto no navegador habilita os efeitos Web Audio da partida local.
 
 ## Display
 
@@ -72,3 +72,5 @@ Comandos do site: `{"v":1,"action":"left"}\n`. Ações: `left`, `right`, `rotate
 O firmware mantém a lógica oficial, pontuação, gravidade, botões físicos e buzzer. O navegador mostra o estado remoto e oferece controles auxiliares. Com MTU BLE pequeno, o firmware fragmenta o JSON e agrupa atualizações rápidas para manter o estado mais recente. A ligação real com o hardware ainda precisa de teste na bancada.
 
 Depois de conectar, o ESP32 aguarda no menu. Esquerda seleciona Como jogar, Descida rápida volta para Começar e Girar confirma a opção ou fecha o manual. Atualize o firmware para navegar com os botões físicos.
+
+O menu e o manual usam notificações compactas com os campos `v`, `status` e `menuSelection`. Na pausa ou no fim da partida, Esquerda volta ao menu. A tela oferece um único botão abaixo do tabuleiro para pausar ou continuar.

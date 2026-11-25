@@ -268,6 +268,7 @@ struct Button {
   bool stable = HIGH;
   uint32_t changedAt = 0;
   uint32_t nextRepeat = 0;
+  bool waitingForRotateRelease = false;
 };
 Button buttons[] = {{PIN_LEFT, LEFT}, {PIN_ROTATE, ROTATE}, {PIN_RIGHT, RIGHT}, {PIN_DOWN, DOWN}};
 
@@ -328,7 +329,14 @@ bool append(char* buffer, size_t capacity, size_t& length, const char* format, .
 
 size_t buildState(char* output, size_t capacity) {
   size_t length = 0;
-  if (!append(output, capacity, length, "{\"v\":1,\"board\":[")) return 0;
+  if (game.status == MENU || game.status == HELP) {
+    const char* screen = game.status == MENU ? "menu" : "help";
+    if (!append(output, capacity, length,
+                R"({"v":1,"controls":2,"status":"%s","menuSelection":%u})" "\n",
+                screen, game.menuSelection)) return 0;
+    return length;
+  }
+  if (!append(output, capacity, length, "{\"v\":1,\"controls\":2,\"board\":[")) return 0;
   for (uint8_t row = 0; row < BOARD_H; ++row) {
     if (!append(output, capacity, length, "%s[", row ? "," : "")) return 0;
     for (uint8_t col = 0; col < BOARD_W; ++col)
@@ -350,6 +358,8 @@ size_t buildState(char* output, size_t capacity) {
   return length;
 }
 
+void pollButtons(uint32_t now);
+
 void sendState(uint32_t now) {
   if (!connected || !subscribed || !stateDirty || (!forceState && now - lastSendMs < MIN_NOTIFY_INTERVAL_MS)) return;
   char payload[768];
@@ -364,16 +374,19 @@ void sendState(uint32_t now) {
     needsResync = false;
     delay(3);
   }
+  // A debounced press during transmission must schedule the next snapshot.
+  stateDirty = false;
   for (size_t offset = 0; offset < length; offset += chunkSize) {
     size_t count = chunkSize < length - offset ? chunkSize : length - offset;
     if (!stateCharacteristic->notify((const uint8_t*)payload + offset, count, connectionHandle)) {
+      stateDirty = true;
       needsResync = true;
       lastSendMs = millis();
       return;
     }
+    pollButtons(millis());
     delay(3);
   }
-  stateDirty = false;
   forceState = false;
   lastSendMs = millis();
 }
@@ -419,6 +432,16 @@ void updateSound(uint32_t now) {
 }
 
 void applyAction(Action action) {
+  if (game.status == PAUSED || game.status == OVER) {
+    if (action == LEFT) game.openMenu();
+    else if (action == ROTATE && game.status == PAUSED) game.pause();
+    else if (action == ROTATE) game.start();
+    else if (action != SYNC && action != PAUSE && action != RESTART) return;
+    if (action == LEFT || action == ROTATE) {
+      stateDirty = true;
+      return;
+    }
+  }
   if (game.status == MENU && (action == LEFT || action == DOWN)) {
     game.menuSelection = action == LEFT ? 1 : 0;
     stateDirty = true;
@@ -461,9 +484,18 @@ void pollButtons(uint32_t now) {
       button.stable = reading;
       if (reading == LOW) {
         const bool playing = game.status == PLAYING;
-        applyAction(button.action);
+        // During play a tap rotates on release and a hold pauses.
+        button.waitingForRotateRelease = playing && button.action == ROTATE;
+        if (!button.waitingForRotateRelease) applyAction(button.action);
         button.nextRepeat = playing && button.action == DOWN ? now + 160 : 0;
+      } else if (button.waitingForRotateRelease) {
+        button.waitingForRotateRelease = false;
+        if (game.status == PLAYING) applyAction(ROTATE);
       }
+    }
+    if (button.waitingForRotateRelease && button.raw == LOW && now - button.changedAt >= 700) {
+      button.waitingForRotateRelease = false;
+      if (game.status == PLAYING) applyAction(PAUSE);
     }
     if (game.status == PLAYING && button.stable == LOW && button.nextRepeat && button.action == DOWN && int32_t(now - button.nextRepeat) >= 0) {
       applyAction(button.action);
@@ -489,7 +521,6 @@ void setup() {
   pinMode(PIN_BT_GREEN, OUTPUT);
   updateBluetoothLeds();
   setupBuzzer();
-  game.start();
   game.openMenu();
   eventQueue = xQueueCreate(24, sizeof(Event));
   if (!eventQueue) { Serial.println("BLE queue allocation failed"); while (true) delay(1000); }
@@ -526,7 +557,10 @@ void loop() {
       subscribed = false;
       connectionHandle = event.handle;
       game.openMenu();
-      for (Button& button : buttons) button.nextRepeat = 0;
+      for (Button& button : buttons) {
+        button.nextRepeat = 0;
+        button.waitingForRotateRelease = false;
+      }
       stateDirty = true;
       needsResync = false;
       updateBluetoothLeds();
@@ -542,7 +576,7 @@ void loop() {
     } else if (connected && event.handle == connectionHandle) applyAction(event.action);
   }
 
-  pollButtons(now);
+  if (connected && subscribed) pollButtons(now);
   if (game.tick(elapsed)) stateDirty = true;
   updateSound(now);
   sendState(now);

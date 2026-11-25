@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   color-scheme: dark;
   --bg: #0d091b;
   --text: #fff2ff;
@@ -88,7 +88,7 @@ canvas { display: block; width: 100%; height: auto; aspect-ratio: 3 / 4; image-r
 .overlay button.selected { color: #100b22; background: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 15px #8cf8f24d; }
 .overlay button.selected::before { content: '▶ '; }
 .menu-hint { margin: 12px 0 0; text-align: center; color: var(--muted); font-size: clamp(10px, 1.5vh, 14px); }
-.controls { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+.controls { display: grid; grid-template-columns: 1fr; margin-top: 10px; }
 .controls button {
   min-width: 0;
   height: 46px;
@@ -101,10 +101,8 @@ canvas { display: block; width: 100%; height: auto; aspect-ratio: 3 / 4; image-r
   touch-action: none;
   user-select: none;
 }
-.controls button:active, .controls button.pressed { background: #483267; color: var(--pink); }
-.controls small { display: block; font: 8px monospace; color: var(--muted); }
-.console-tools { display: flex; justify-content: space-between; margin-top: 4px; }
-.console-tools button { background: none; border: none; color: var(--muted); font: 10px monospace; padding: 7px 2px; }
+.controls button:active { background: #483267; color: var(--pink); }
+.controls button:disabled { opacity: .5; cursor: default; }
 aside { min-width: 0; padding-top: 8px; }
 .section-label { color: var(--pink); font: bold 11px monospace; letter-spacing: .12em; }
 .connection { border: 1px solid var(--line); background: #1a122e; display: flex; gap: 9px; padding: 12px; margin-top: 9px; border-radius: 6px; }

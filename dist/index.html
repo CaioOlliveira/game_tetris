@@ -24,20 +24,17 @@
             <button id="start" class="selected">COMEÇAR</button>
             <button id="help">COMO JOGAR</button>
             <button id="connect-menu">CONECTAR ESP32</button>
-            <p class="menu-hint">Esquerda ↓ · Descida rápida ↑ · Girar confirma</p>
+            <p id="menu-hint" class="menu-hint" role="status">Conecte o ESP32 para usar os botões físicos.</p>
+          </div>
+          <div id="round-end" class="overlay hidden">
+            <h2>Fim de jogo</h2>
+            <button id="restart" class="selected">JOGAR NOVAMENTE</button>
+            <p class="menu-hint">Girar reinicia · Esquerda volta ao menu</p>
           </div>
         </div>
       </div>
       <div class="controls">
-        <button data-action="left" aria-label="Mover para esquerda">←<small>ESQUERDA</small></button>
-        <button data-action="rotate" aria-label="Girar peça">↻<small>GIRAR</small></button>
-        <button data-action="right" aria-label="Mover para direita">→<small>DIREITA</small></button>
-        <button data-action="down" aria-label="Acelerar queda">↓<small>DESCER</small></button>
-        <button id="pause" aria-label="Pausar ou continuar">Ⅱ<small>PAUSAR</small></button>
-      </div>
-      <div class="console-tools">
-        <button id="sound" aria-pressed="true">♫ SOM LIGADO</button>
-        <button id="restart">↺ REINICIAR</button>
+        <button id="pause" disabled>PAUSAR</button>
       </div>
     </section>
 
@@ -67,7 +64,7 @@
     <h2>Como jogar</h2>
     <p>Complete linhas horizontais para eliminá-las. A cada 10 linhas, o nível e a velocidade aumentam.</p>
     <p><strong>No menu:</strong> Esquerda seleciona a opção de baixo, Descida rápida seleciona a de cima e Girar confirma ou volta do manual.</p>
-    <p><strong>Na partida:</strong> Esquerda e Direita movem a peça, Girar roda e Descida rápida acelera a queda.</p>
+    <p><strong>Na partida:</strong> Esquerda e Direita movem a peça, Girar roda e Descida rápida acelera a queda. Segure Girar para pausar. Na pausa, Girar continua e Esquerda volta ao menu.</p>
     <p><strong>No teclado:</strong> ← e → movem, ↑ gira, ↓ acelera a queda, Espaço faz a queda instantânea e P pausa.</p>
   </dialog>
   <script src="script.js"></script>
